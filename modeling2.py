@@ -133,6 +133,7 @@ class BertModel(object):
                is_training,
                input_ids,
                input_mask=None,
+               align_mask=None,
                token_type_ids=None,
                use_one_hot_embeddings=False,
                scope=None):
@@ -205,6 +206,7 @@ class BertModel(object):
         self.all_encoder_layers = transformer_model(
             input_tensor=self.embedding_output,
             attention_mask=attention_mask,
+            align_mask=align_mask,
             hidden_size=config.hidden_size,
             num_hidden_layers=config.num_hidden_layers,
             num_attention_heads=config.num_attention_heads,
@@ -742,20 +744,25 @@ def attention_layer(from_tensor,
   context_layer2 = tf.matmul(attention_probs2, value_layer)
 
   r_f=tf.concat([context_layer,context_layer2],axis=-1)
-
-  linear_l = tf.layers.dense(
-      r_f,
-      num_attention_heads * size_per_head,
-      activation="tanh",
-      name="linear_l",
-      kernel_initializer=create_initializer(initializer_range))
+  r_f=tf.reshape(r_f,[batch_size*num_attention_heads*from_seq_length,size_per_head])
 
   linear_r = tf.layers.dense(
-      to_tensor_2d,
-      num_attention_heads * size_per_head,
-      activation=key_act,
+      r_f,
+      size_per_head,
+      activation=tf.tanh,
       name="linear_r",
       kernel_initializer=create_initializer(initializer_range))
+  linear_r=tf.reshape(linear_r,[batch_size,num_attention_heads,from_seq_length,size_per_head])
+
+  linear_g = tf.layers.dense(
+      r_f,
+      size_per_head,
+      activation=tf.sigmoid,
+      name="linear_g",
+      kernel_initializer=create_initializer(initializer_range))
+  linear_g=tf.reshape(linear_g,[batch_size,num_attention_heads,from_seq_length,size_per_head])
+
+  context_layer=linear_g*linear_r+(1-linear_g)*context_layer
 
   # `context_layer` = [B, F, N, H]
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
@@ -776,6 +783,7 @@ def attention_layer(from_tensor,
 
 def transformer_model(input_tensor,
                       attention_mask=None,
+                      align_mask=None,
                       hidden_size=768,
                       num_hidden_layers=12,
                       num_attention_heads=12,
@@ -857,6 +865,7 @@ def transformer_model(input_tensor,
               from_tensor=layer_input,
               to_tensor=layer_input,
               attention_mask=attention_mask,
+              align_mask=align_mask,
               num_attention_heads=num_attention_heads,
               size_per_head=attention_head_size,
               attention_probs_dropout_prob=attention_probs_dropout_prob,

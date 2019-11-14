@@ -33,12 +33,12 @@ FLAGS = flags.FLAGS
 
 ## Required parameters
 flags.DEFINE_string(
-    "data_dir", r"D:\代码\服务器代码中转\bert\data",
+    "data_dir", r"D:\代码\服务器代码中转\roberta-tf\data",
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
 flags.DEFINE_string(
-    "bert_config_file", r"D:\代码\服务器代码中转\bert\pretrained\config_tf.json",
+    "bert_config_file", r"D:\代码\服务器代码中转\roberta-tf\pretrained\config_tf.json",
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
@@ -51,7 +51,7 @@ flags.DEFINE_string(
 ## Other parameters
 
 flags.DEFINE_string(
-    "init_checkpoint", r"D:\代码\服务器代码中转\bert\pretrained\roberta_base.ckpt",
+    "init_checkpoint", r"D:\代码\服务器代码中转\roberta-tf\pretrained\roberta_base.ckpt",
     "Initial checkpoint (usually from a pre-trained BERT model).")
 
 flags.DEFINE_bool(
@@ -804,7 +804,7 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"D:\代码\服务器代码中转\bert\pretrained")
+  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"D:\代码\服务器代码中转\roberta-tf\pretrained")
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:

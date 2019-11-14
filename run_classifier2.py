@@ -21,8 +21,8 @@ from __future__ import print_function
 import collections
 import csv
 import os
-import modeling
-import optimization
+import modeling2
+import optimization2
 import tokenization
 import tokenization2
 import tensorflow as tf
@@ -33,12 +33,12 @@ FLAGS = flags.FLAGS
 
 ## Required parameters
 flags.DEFINE_string(
-    "data_dir", r"D:\代码\服务器代码中转\bert\data",
+    "data_dir", r"D:\代码\服务器代码中转\roberta-tf\data",
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
 flags.DEFINE_string(
-    "bert_config_file", r"D:\代码\服务器代码中转\bert\pretrained\config_tf.json",
+    "bert_config_file", r"D:\代码\服务器代码中转\roberta-tf\pretrained\config_tf.json",
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
@@ -51,7 +51,7 @@ flags.DEFINE_string(
 ## Other parameters
 
 flags.DEFINE_string(
-    "init_checkpoint", r"D:\代码\服务器代码中转\bert\pretrained\roberta_base.ckpt",
+    "init_checkpoint", r"D:\代码\服务器代码中转\roberta-tf\pretrained\roberta_base.ckpt",
     "Initial checkpoint (usually from a pre-trained BERT model).")
 
 flags.DEFINE_bool(
@@ -73,13 +73,14 @@ flags.DEFINE_bool(
     "do_predict", False,
     "Whether to run the model in inference mode on the test set.")
 
-flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
+flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
 
-flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
+flags.DEFINE_integer("eval_batch_size", 24, "Total batch size for eval.")
 
-flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
+flags.DEFINE_integer("predict_batch_size", 24, "Total batch size for predict.")
 
-flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
+flags.DEFINE_float("learning_rate", 2e-3, "The initial learning rate for Adam.")
+flags.DEFINE_float("learning_rate2", 1e-5, "The initial learning rate for Adam.")
 
 flags.DEFINE_float("num_train_epochs", 3.0,
                    "Total number of training epochs to perform.")
@@ -162,11 +163,13 @@ class InputFeatures(object):
   def __init__(self,
                input_ids,
                input_mask,
+               align_mask,
                segment_ids,
                label_id,
                is_real_example=True):
     self.input_ids = input_ids
     self.input_mask = input_mask
+    self.align_mask=align_mask
     self.segment_ids = segment_ids
     self.label_id = label_id
     self.is_real_example = is_real_example
@@ -428,6 +431,8 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
       max_length=max_seq_length,
   )
   input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
+  text_a_len = token_type_ids.count(0)
+  text_b_len = len(token_type_ids) - text_a_len
 
   # The mask has 1 for real tokens and 0 for padding tokens. Only real
   # tokens are attended to.
@@ -438,9 +443,11 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   input_ids = input_ids + ([pad_token] * padding_length)
   attention_mask = attention_mask + ([0] * padding_length)
   token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
+  align_mask = [[0] * text_a_len + [1] * text_b_len + [0] * padding_length] * text_a_len + [[1] * text_a_len + [0] * (text_b_len + padding_length)] * text_b_len + [[0] * len(input_ids)] * padding_length
 
 
   assert len(input_ids) == max_seq_length
+  assert len(align_mask[0]) == max_seq_length
   assert len(attention_mask) == max_seq_length
   assert len(token_type_ids) == max_seq_length
 
@@ -457,6 +464,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   feature = InputFeatures(
       input_ids=input_ids,
       input_mask=attention_mask,
+      align_mask=align_mask,
       segment_ids=token_type_ids,
       label_id=label_id,
       is_real_example=True)
@@ -483,6 +491,7 @@ def file_based_convert_examples_to_features(
     features = collections.OrderedDict()
     features["input_ids"] = create_int_feature(feature.input_ids)
     features["input_mask"] = create_int_feature(feature.input_mask)
+    features["align_mask"] = create_int_feature(feature.align_mask)
     features["segment_ids"] = create_int_feature(feature.segment_ids)
     features["label_ids"] = create_int_feature([feature.label_id])
     features["is_real_example"] = create_int_feature(
@@ -500,6 +509,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
   name_to_features = {
       "input_ids": tf.FixedLenFeature([seq_length], tf.int64),
       "input_mask": tf.FixedLenFeature([seq_length], tf.int64),
+      "align_mask": tf.FixedLenFeature([seq_length,seq_length], tf.int64),
       "segment_ids": tf.FixedLenFeature([seq_length], tf.int64),
       "label_ids": tf.FixedLenFeature([], tf.int64),
       "is_real_example": tf.FixedLenFeature([], tf.int64),
@@ -558,15 +568,15 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
       tokens_b.pop()
 
 
-def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
-                 labels, num_labels, use_one_hot_embeddings):
+def create_model(bert_config, is_training, input_ids, input_mask,align_mask,labels, num_labels, use_one_hot_embeddings):
   """Creates a classification model."""
-  model = modeling.BertModel(
+  model = modeling2.BertModel(
       config=bert_config,
       is_training=is_training,
       input_ids=input_ids,
       input_mask=input_mask,
-      token_type_ids=segment_ids,
+      align_mask=align_mask,
+      token_type_ids=None,
       use_one_hot_embeddings=use_one_hot_embeddings)
 
   # In the demo, we are doing a simple classification task on the entire
@@ -603,7 +613,7 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
     return (loss, per_example_loss, logits, probabilities)
 
 
-def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
+def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,learning_rate2,
                      num_train_steps, num_warmup_steps, use_tpu,
                      use_one_hot_embeddings):
   """Returns `model_fn` closure for TPUEstimator."""
@@ -617,7 +627,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
     input_ids = features["input_ids"]
     input_mask = features["input_mask"]
-    segment_ids = features["segment_ids"]
+    #segment_ids = features["segment_ids"]
+    align_mask=features["align_mask"]
     label_ids = features["label_ids"]
     is_real_example = None
     if "is_real_example" in features:
@@ -628,7 +639,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
     (total_loss, per_example_loss, logits, probabilities) = create_model(
-        bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
+        bert_config, is_training, input_ids, input_mask,align_mask, label_ids,
         num_labels, use_one_hot_embeddings)
 
     tvars = tf.trainable_variables()
@@ -636,7 +647,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling2.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -658,8 +669,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op = optimization.create_optimizer(
-          total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
+      train_op = optimization2.create_optimizer(
+          total_loss, learning_rate,learning_rate2, num_train_steps, num_warmup_steps, use_tpu)
 
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
@@ -785,7 +796,7 @@ def main(_):
     raise ValueError(
         "At least one of `do_train`, `do_eval` or `do_predict' must be True.")
 
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling2.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   if FLAGS.max_seq_length > bert_config.max_position_embeddings:
     raise ValueError(
@@ -804,7 +815,7 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"D:\代码\服务器代码中转\bert\pretrained")
+  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"D:\代码\服务器代码中转\roberta-tf\pretrained")
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:
@@ -836,6 +847,7 @@ def main(_):
       num_labels=len(label_list),
       init_checkpoint=FLAGS.init_checkpoint,
       learning_rate=FLAGS.learning_rate,
+      learning_rate2=FLAGS.learning_rate2,
       num_train_steps=num_train_steps,
       num_warmup_steps=num_warmup_steps,
       use_tpu=FLAGS.use_tpu,
