@@ -183,6 +183,7 @@ class BertModel(object):
         # normalize and perform dropout.
         self.embedding_output = embedding_postprocessor(
             input_tensor=self.embedding_output,
+            input_ids=input_ids,
             use_token_type=False,
             token_type_ids=token_type_ids,
             token_type_vocab_size=config.type_vocab_size,
@@ -426,6 +427,7 @@ def embedding_lookup(input_ids,
 
 
 def embedding_postprocessor(input_tensor,
+                            input_ids,
                             use_token_type=False,
                             token_type_ids=None,
                             token_type_vocab_size=16,
@@ -502,20 +504,14 @@ def embedding_postprocessor(input_tensor,
       # for position [0, 1, 2, ..., max_position_embeddings-1], and the current
       # sequence has positions [0, 1, 2, ... seq_length-1], so we can just
       # perform a slice.
-      position_embeddings = tf.slice(full_position_embeddings, [0, 0],
-                                     [seq_length, -1])
-      num_dims = len(output.shape.as_list())
+      position_ids = tf.range(start=0, limit=seq_length, delta=1, dtype=input_ids.dtype)
+      flat_position_ids = tf.reshape(
+          tf.expand_dims(tf.tile(tf.expand_dims(position_ids, axis=[0]), [batch_size, 1]), axis=[-1]), [-1])
+      position_embedding = tf.gather(full_position_embeddings, flat_position_ids)
 
-      # Only the last two dimensions are relevant (`seq_length` and `width`), so
-      # we broadcast among the first dimensions, which is typically just
-      # the batch size.
-      position_broadcast_shape = []
-      for _ in range(num_dims - 2):
-        position_broadcast_shape.append(1)
-      position_broadcast_shape.extend([seq_length, width])
-      position_embeddings = tf.reshape(position_embeddings,
-                                       position_broadcast_shape)
-      output += position_embeddings
+      position_embedding = tf.reshape(position_embedding, input_shape)
+
+      output += position_embedding
 
   output = layer_norm_and_dropout(output, dropout_prob)
   return output

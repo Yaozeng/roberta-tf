@@ -33,25 +33,25 @@ FLAGS = flags.FLAGS
 
 ## Required parameters
 flags.DEFINE_string(
-    "data_dir", r"D:\代码\服务器代码中转\roberta-tf\data",
+    "data_dir", r"./data",
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
 flags.DEFINE_string(
-    "bert_config_file", r"D:\代码\服务器代码中转\roberta-tf\pretrained\config_tf.json",
+    "bert_config_file", r"./pretrained/config_tf.json",
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
 flags.DEFINE_string("task_name", "mytask", "The name of the task to train.")
 
 flags.DEFINE_string(
-    "output_dir", "output",
+    "output_dir", "output2",
     "The output directory where the model checkpoints will be written.")
 
 ## Other parameters
 
 flags.DEFINE_string(
-    "init_checkpoint", r"D:\代码\服务器代码中转\roberta-tf\pretrained\roberta_base.ckpt",
+    "init_checkpoint", r"./pretrained/roberta_base.ckpt",
     "Initial checkpoint (usually from a pre-trained BERT model).")
 
 flags.DEFINE_bool(
@@ -86,11 +86,11 @@ flags.DEFINE_float("num_train_epochs", 3.0,
                    "Total number of training epochs to perform.")
 
 flags.DEFINE_float(
-    "warmup_proportion", 0.1,
+    "warmup_proportion", 0.06,
     "Proportion of training to perform linear learning rate warmup for. "
     "E.g., 0.1 = 10% of training.")
 
-flags.DEFINE_integer("save_checkpoints_steps", 1000,
+flags.DEFINE_integer("save_checkpoints_steps", 100,
                      "How often to save the model checkpoint.")
 
 flags.DEFINE_integer("iterations_per_loop", 1000,
@@ -408,8 +408,6 @@ class MyProcessor(DataProcessor):
         text_a = tokenization.convert_to_unicode(line[0])
         text_b = tokenization.convert_to_unicode(line[1])
         label = tokenization.convert_to_unicode(line[2])
-        print(text_a)
-        print(text_b)
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -641,6 +639,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,lea
     (total_loss, per_example_loss, logits, probabilities) = create_model(
         bert_config, is_training, input_ids, input_mask,align_mask, label_ids,
         num_labels, use_one_hot_embeddings)
+    tf.summary.scalar("loss",total_loss)
 
     tvars = tf.trainable_variables()
     initialized_variable_names = {}
@@ -669,9 +668,10 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,lea
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op = optimization2.create_optimizer(
+      train_op ,lr1,lr2= optimization2.create_optimizer(
           total_loss, learning_rate,learning_rate2, num_train_steps, num_warmup_steps, use_tpu)
-
+      tf.summary.scalar("lr1", lr1)
+      tf.summary.scalar("lr2", lr2)
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=total_loss,
@@ -684,6 +684,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,lea
         accuracy = tf.metrics.accuracy(
             labels=label_ids, predictions=predictions, weights=is_real_example)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+        tf.summary.scalar("acc", accuracy)
+        tf.summary.scalar("eval_loss", loss)
         return {
             "eval_accuracy": accuracy,
             "eval_loss": loss,
@@ -713,12 +715,14 @@ def input_fn_builder(features, seq_length, is_training, drop_remainder):
 
   all_input_ids = []
   all_input_mask = []
+  all_align_mask=[]
   all_segment_ids = []
   all_label_ids = []
 
   for feature in features:
     all_input_ids.append(feature.input_ids)
     all_input_mask.append(feature.input_mask)
+    all_align_mask.append(feature.align_mask)
     all_segment_ids.append(feature.segment_ids)
     all_label_ids.append(feature.label_id)
 
@@ -740,6 +744,11 @@ def input_fn_builder(features, seq_length, is_training, drop_remainder):
             tf.constant(
                 all_input_mask,
                 shape=[num_examples, seq_length],
+                dtype=tf.int32),
+        "align_mask":
+            tf.constant(
+                all_align_mask,
+                shape=[num_examples,seq_length, seq_length],
                 dtype=tf.int32),
         "segment_ids":
             tf.constant(
@@ -815,7 +824,7 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"D:\代码\服务器代码中转\roberta-tf\pretrained")
+  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"./pretrained")
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:
@@ -827,6 +836,8 @@ def main(_):
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
+      log_step_count_steps=1,
+      save_summary_steps=1,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
@@ -864,15 +875,15 @@ def main(_):
       predict_batch_size=FLAGS.predict_batch_size)
 
   if FLAGS.do_train:
-    train_file = os.path.join(FLAGS.output_dir, "train.tf_record")
-    file_based_convert_examples_to_features(
-        train_examples, label_list, FLAGS.max_seq_length, tokenizer, train_file)
+    #train_file = os.path.join(FLAGS.output_dir, "train.tf_record")
+    features=convert_examples_to_features(
+        train_examples, label_list, FLAGS.max_seq_length, tokenizer)
     tf.logging.info("***** Running training *****")
     tf.logging.info("  Num examples = %d", len(train_examples))
     tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
     tf.logging.info("  Num steps = %d", num_train_steps)
-    train_input_fn = file_based_input_fn_builder(
-        input_file=train_file,
+    train_input_fn = input_fn_builder(
+        features=features,
         seq_length=FLAGS.max_seq_length,
         is_training=True,
         drop_remainder=True)
@@ -890,9 +901,9 @@ def main(_):
       while len(eval_examples) % FLAGS.eval_batch_size != 0:
         eval_examples.append(PaddingInputExample())
 
-    eval_file = os.path.join(FLAGS.output_dir, "eval.tf_record")
-    file_based_convert_examples_to_features(
-        eval_examples, label_list, FLAGS.max_seq_length, tokenizer, eval_file)
+    #eval_file = os.path.join(FLAGS.output_dir, "eval.tf_record")
+    eval_features=convert_examples_to_features(
+        eval_examples, label_list, FLAGS.max_seq_length, tokenizer)
 
     tf.logging.info("***** Running evaluation *****")
     tf.logging.info("  Num examples = %d (%d actual, %d padding)",
@@ -909,8 +920,8 @@ def main(_):
       eval_steps = int(len(eval_examples) // FLAGS.eval_batch_size)
 
     eval_drop_remainder = True if FLAGS.use_tpu else False
-    eval_input_fn = file_based_input_fn_builder(
-        input_file=eval_file,
+    eval_input_fn = input_fn_builder(
+        features=eval_features,
         seq_length=FLAGS.max_seq_length,
         is_training=False,
         drop_remainder=eval_drop_remainder)
@@ -935,10 +946,10 @@ def main(_):
       while len(predict_examples) % FLAGS.predict_batch_size != 0:
         predict_examples.append(PaddingInputExample())
 
-    predict_file = os.path.join(FLAGS.output_dir, "predict.tf_record")
-    file_based_convert_examples_to_features(predict_examples, label_list,
+    #predict_file = os.path.join(FLAGS.output_dir, "predict.tf_record")
+    predicted_features=convert_examples_to_features(predict_examples, label_list,
                                             FLAGS.max_seq_length, tokenizer,
-                                            predict_file)
+                                            )
 
     tf.logging.info("***** Running prediction*****")
     tf.logging.info("  Num examples = %d (%d actual, %d padding)",
@@ -947,8 +958,8 @@ def main(_):
     tf.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
 
     predict_drop_remainder = True if FLAGS.use_tpu else False
-    predict_input_fn = file_based_input_fn_builder(
-        input_file=predict_file,
+    predict_input_fn = input_fn_builder(
+        features=predicted_features,
         seq_length=FLAGS.max_seq_length,
         is_training=False,
         drop_remainder=predict_drop_remainder)

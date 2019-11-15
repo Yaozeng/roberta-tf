@@ -33,12 +33,12 @@ FLAGS = flags.FLAGS
 
 ## Required parameters
 flags.DEFINE_string(
-    "data_dir", r"D:\代码\服务器代码中转\roberta-tf\data",
+    "data_dir", r"./data",
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
 flags.DEFINE_string(
-    "bert_config_file", r"D:\代码\服务器代码中转\roberta-tf\pretrained\config_tf.json",
+    "bert_config_file", r"./pretrained/config_tf.json",
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
@@ -51,7 +51,7 @@ flags.DEFINE_string(
 ## Other parameters
 
 flags.DEFINE_string(
-    "init_checkpoint", r"D:\代码\服务器代码中转\roberta-tf\pretrained\roberta_base.ckpt",
+    "init_checkpoint", r"./pretrained/roberta_base.ckpt",
     "Initial checkpoint (usually from a pre-trained BERT model).")
 
 flags.DEFINE_bool(
@@ -73,23 +73,23 @@ flags.DEFINE_bool(
     "do_predict", False,
     "Whether to run the model in inference mode on the test set.")
 
-flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
+flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
 
-flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
+flags.DEFINE_integer("eval_batch_size", 24, "Total batch size for eval.")
 
-flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
+flags.DEFINE_integer("predict_batch_size", 24, "Total batch size for predict.")
 
-flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
+flags.DEFINE_float("learning_rate", 1e-5, "The initial learning rate for Adam.")
 
 flags.DEFINE_float("num_train_epochs", 3.0,
                    "Total number of training epochs to perform.")
 
 flags.DEFINE_float(
-    "warmup_proportion", 0.1,
+    "warmup_proportion", 0.06,
     "Proportion of training to perform linear learning rate warmup for. "
     "E.g., 0.1 = 10% of training.")
 
-flags.DEFINE_integer("save_checkpoints_steps", 1000,
+flags.DEFINE_integer("save_checkpoints_steps", 32,
                      "How often to save the model checkpoint.")
 
 flags.DEFINE_integer("iterations_per_loop", 1000,
@@ -405,8 +405,6 @@ class MyProcessor(DataProcessor):
         text_a = tokenization.convert_to_unicode(line[0])
         text_b = tokenization.convert_to_unicode(line[1])
         label = tokenization.convert_to_unicode(line[2])
-        print(text_a)
-        print(text_b)
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -804,7 +802,7 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"D:\代码\服务器代码中转\roberta-tf\pretrained")
+  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"./pretrained")
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:

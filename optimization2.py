@@ -104,7 +104,7 @@ def create_optimizer(loss, init_lr,init_lr2, num_train_steps, num_warmup_steps, 
   # a different optimizer, you should probably take this line out.
   new_global_step = global_step + 1
   train_op = tf.group(train_op1, train_op2,[global_step.assign(new_global_step)])
-  return train_op
+  return train_op,learning_rate1,learning_rate2
 
 
 class AdamWeightDecayOptimizer(tf.train.Optimizer):
