@@ -556,7 +556,7 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
       tokens_b.pop()
 
 
-def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
+def create_model(bert_config, is_training, input_ids, input_mask,
                  labels, num_labels, use_one_hot_embeddings):
   """Creates a classification model."""
   model = modeling.BertModel(
@@ -564,7 +564,7 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
       is_training=is_training,
       input_ids=input_ids,
       input_mask=input_mask,
-      token_type_ids=segment_ids,
+      token_type_ids=None,
       use_one_hot_embeddings=use_one_hot_embeddings)
 
   # In the demo, we are doing a simple classification task on the entire
@@ -615,7 +615,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
     input_ids = features["input_ids"]
     input_mask = features["input_mask"]
-    segment_ids = features["segment_ids"]
+    #segment_ids = features["segment_ids"]
     label_ids = features["label_ids"]
     is_real_example = None
     if "is_real_example" in features:
@@ -626,7 +626,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
     (total_loss, per_example_loss, logits, probabilities) = create_model(
-        bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
+        bert_config, is_training, input_ids, input_mask, label_ids,
         num_labels, use_one_hot_embeddings)
 
     tvars = tf.trainable_variables()
@@ -656,8 +656,9 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op = optimization.create_optimizer(
+      train_op ,lr= optimization.create_optimizer(
           total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
+      tf.summary.scalar("lr", lr)
 
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,

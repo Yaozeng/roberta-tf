@@ -183,7 +183,6 @@ class BertModel(object):
         # normalize and perform dropout.
         self.embedding_output = embedding_postprocessor(
             input_tensor=self.embedding_output,
-            input_ids=input_ids,
             use_token_type=False,
             token_type_ids=token_type_ids,
             token_type_vocab_size=config.type_vocab_size,
@@ -427,7 +426,6 @@ def embedding_lookup(input_ids,
 
 
 def embedding_postprocessor(input_tensor,
-                            input_ids,
                             use_token_type=False,
                             token_type_ids=None,
                             token_type_vocab_size=16,
@@ -504,12 +502,11 @@ def embedding_postprocessor(input_tensor,
       # for position [0, 1, 2, ..., max_position_embeddings-1], and the current
       # sequence has positions [0, 1, 2, ... seq_length-1], so we can just
       # perform a slice.
-      position_ids = tf.range(start=0, limit=seq_length, delta=1, dtype=input_ids.dtype)
-      flat_position_ids = tf.reshape(
-          tf.expand_dims(tf.tile(tf.expand_dims(position_ids, axis=[0]), [batch_size, 1]), axis=[-1]), [-1])
+      position_ids = tf.range(start=2, limit=seq_length + 2, dtype=tf.int32)[tf.newaxis, :]
+      flat_position_ids = tf.reshape(position_ids, [-1])
       position_embedding = tf.gather(full_position_embeddings, flat_position_ids)
 
-      position_embedding = tf.reshape(position_embedding, input_shape)
+      position_embedding = position_embedding[tf.newaxis, :, :]
 
       output += position_embedding
 
