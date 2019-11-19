@@ -33,7 +33,7 @@ FLAGS = flags.FLAGS
 
 ## Required parameters
 flags.DEFINE_string(
-    "data_dir", r"./data/MRPC",
+    "data_dir", r"./data",
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
@@ -42,10 +42,10 @@ flags.DEFINE_string(
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
-flags.DEFINE_string("task_name", "MRPC", "The name of the task to train.")
+flags.DEFINE_string("task_name", "mytask", "The name of the task to train.")
 
 flags.DEFINE_string(
-    "output_dir", "output",
+    "output_dir", "output/roberta",
     "The output directory where the model checkpoints will be written.")
 
 ## Other parameters
@@ -812,8 +812,8 @@ def main(_):
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
-      log_step_count_steps=5,
-      save_summary_steps=5,
+      log_step_count_steps=25,
+      save_summary_steps=25,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,

@@ -497,7 +497,7 @@ def embedding_postprocessor(input_tensor,
           initializer=create_initializer(initializer_range))
 
       position_embeddings = tf.slice(full_position_embeddings, [2, 0],
-                                     [seq_length+2, -1])
+                                     [seq_length, -1])
       num_dims = len(output.shape.as_list())
 
       # Only the last two dimensions are relevant (`seq_length` and `width`), so

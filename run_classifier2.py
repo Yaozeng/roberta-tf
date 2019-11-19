@@ -45,7 +45,7 @@ flags.DEFINE_string(
 flags.DEFINE_string("task_name", "mytask", "The name of the task to train.")
 
 flags.DEFINE_string(
-    "output_dir", "output2",
+    "output_dir", "output/roberta_align",
     "The output directory where the model checkpoints will be written.")
 
 ## Other parameters
