@@ -520,11 +520,10 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
     # So cast all int64 to int32.
     for name in list(example.keys()):
-      t = example[name]
-      if t.dtype == tf.int64:
-        t = tf.to_int32(t)
-      example[name] = t
-
+        t = example[name]
+        if t.dtype == tf.int64:
+            t = tf.to_int32(t)
+        example[name] = t
     return example
 
   def input_fn(params):
@@ -536,7 +535,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
     d = tf.data.TFRecordDataset(input_file)
     if is_training:
       d = d.repeat()
-      d = d.shuffle(buffer_size=100)
+      d = d.shuffle(buffer_size=1000)
 
     d = d.apply(
         tf.contrib.data.map_and_batch(
@@ -668,10 +667,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,lea
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op ,lr1,lr2= optimization2.create_optimizer(
+      train_op= optimization2.create_optimizer(
           total_loss, learning_rate,learning_rate2, num_train_steps, num_warmup_steps, use_tpu)
-      tf.summary.scalar("lr1", lr1)
-      tf.summary.scalar("lr2", lr2)
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=total_loss,

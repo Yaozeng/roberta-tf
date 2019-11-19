@@ -86,17 +86,6 @@ def convert_pytorch_checkpoint_to_tf(model:BertModel, ckpt_dir:str, model_name:s
         for var_name in state_dict:
             tf_name = to_tf_var_name(var_name)
             torch_tensor = state_dict[var_name].numpy()
-            if 'token_type_embeddings' in tf_name:
-                torch_tensor = np.tile(torch_tensor,[config['type_vocab_size'],1])
-            if 'word_embeddings' in tf_name:
-                add_emb_shape = config['vocab_size'] - torch_tensor.shape[0]
-                embedding_table = tf.get_variable(name='additional_emb', 
-                        shape=[add_emb_shape, torch_tensor.shape[1]], 
-                        initializer=create_initializer(config['initializer_range']))
-                embedding_table.initializer.run()
-                additional_emb = embedding_table.eval()
-                torch_tensor = np.concatenate([torch_tensor, additional_emb], axis=0)
-                
             if any([x in var_name for x in tensors_to_transpose]):
                 torch_tensor = torch_tensor.T
             tf_var = create_tf_var(tensor=torch_tensor, name=tf_name, session=session)
@@ -112,22 +101,22 @@ def main(raw_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name",
                         type=str,
-                        required=True,
+                        default="roberta-base",
                         help="model name e.g. bert-base-uncased")
     parser.add_argument("--config_file",
                         type=str,
-                        required=True,
+                        default="pretrained/config_tf.json",
                         help="config for Tensorflow model")
     parser.add_argument("--tf_cache_dir",
                         type=str,
-                        required=True,
+                        default="pretrianed",
                         help="Directory in which to save tensorflow model")
     args = parser.parse_args(raw_args)
    
     with open(args.config_file, 'r') as inf:
       config = json.load(inf)
-    robert_config=RobertaConfig.from_pretrained(r"D:\代码\服务器代码中转\bert\pretrained")
-    model = BertModel.from_pretrained(r"D:\代码\服务器代码中转\bert\pretrained\roberta-base-pytorch_model.bin",from_tf=False,config=robert_config)
+    robert_config=RobertaConfig.from_pretrained(r"D:\代码\服务器代码中转\roberta-tf\pretrained")
+    model = BertModel.from_pretrained(r"D:\代码\服务器代码中转\roberta-tf\pretrained\roberta-base-pytorch_model.bin",from_tf=False,config=robert_config)
     
     convert_pytorch_checkpoint_to_tf(
         model=model,

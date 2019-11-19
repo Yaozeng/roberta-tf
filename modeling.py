@@ -502,13 +502,20 @@ def embedding_postprocessor(input_tensor,
       # for position [0, 1, 2, ..., max_position_embeddings-1], and the current
       # sequence has positions [0, 1, 2, ... seq_length-1], so we can just
       # perform a slice.
-      position_ids = tf.range(start=2, limit=seq_length + 2, dtype=tf.int32)[tf.newaxis, :]
-      flat_position_ids = tf.reshape(position_ids, [-1])
-      position_embedding = tf.gather(full_position_embeddings, flat_position_ids)
+      position_embeddings = tf.slice(full_position_embeddings, [2, 0],
+                                     [seq_length, -1])
+      num_dims = len(output.shape.as_list())
 
-      position_embedding = position_embedding[tf.newaxis, :, :]
-
-      output += position_embedding
+      # Only the last two dimensions are relevant (`seq_length` and `width`), so
+      # we broadcast among the first dimensions, which is typically just
+      # the batch size.
+      position_broadcast_shape = []
+      for _ in range(num_dims - 2):
+          position_broadcast_shape.append(1)
+      position_broadcast_shape.extend([seq_length, width])
+      position_embeddings = tf.reshape(position_embeddings,
+                                       position_broadcast_shape)
+      output += position_embeddings
 
   output = layer_norm_and_dropout(output, dropout_prob)
   return output

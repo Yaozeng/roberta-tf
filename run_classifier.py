@@ -33,7 +33,7 @@ FLAGS = flags.FLAGS
 
 ## Required parameters
 flags.DEFINE_string(
-    "data_dir", r"./data",
+    "data_dir", r"./data/MRPC",
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
@@ -42,7 +42,7 @@ flags.DEFINE_string(
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
 
-flags.DEFINE_string("task_name", "mytask", "The name of the task to train.")
+flags.DEFINE_string("task_name", "MRPC", "The name of the task to train.")
 
 flags.DEFINE_string(
     "output_dir", "output",
@@ -89,7 +89,7 @@ flags.DEFINE_float(
     "Proportion of training to perform linear learning rate warmup for. "
     "E.g., 0.1 = 10% of training.")
 
-flags.DEFINE_integer("save_checkpoints_steps", 32,
+flags.DEFINE_integer("save_checkpoints_steps", 100,
                      "How often to save the model checkpoint.")
 
 flags.DEFINE_integer("iterations_per_loop", 1000,
@@ -510,11 +510,10 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
     # So cast all int64 to int32.
     for name in list(example.keys()):
-      t = example[name]
-      if t.dtype == tf.int64:
-        t = tf.to_int32(t)
-      example[name] = t
-
+        t = example[name]
+        if t.dtype == tf.int64:
+            t = tf.to_int32(t)
+        example[name] = t
     return example
 
   def input_fn(params):
@@ -526,7 +525,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
     d = tf.data.TFRecordDataset(input_file)
     if is_training:
       d = d.repeat()
-      d = d.shuffle(buffer_size=100)
+      d = d.shuffle(buffer_size=1000)
 
     d = d.apply(
         tf.contrib.data.map_and_batch(
@@ -656,10 +655,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op ,lr= optimization.create_optimizer(
+      train_op= optimization.create_optimizer(
           total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
-      tf.summary.scalar("lr", lr)
-
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=total_loss,
@@ -815,8 +812,8 @@ def main(_):
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
-      log_step_count_steps=1,
-      save_summary_steps=1,
+      log_step_count_steps=5,
+      save_summary_steps=5,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
