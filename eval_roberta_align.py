@@ -45,7 +45,7 @@ with graph.as_default():
     saver = tf.train.Saver()
 
 with  tf.Session(graph=graph) as sess:
-    model_file=tf.train.latest_checkpoint("./output2/")
+    model_file=tf.train.latest_checkpoint("./output/roberta_align/")
     saver.restore(sess,model_file)
     for path in paths:
         data = xlrd.open_workbook(path)
