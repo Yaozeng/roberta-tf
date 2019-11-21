@@ -87,8 +87,13 @@ def create_optimizer(loss, init_lr,init_lr2, num_train_steps, num_warmup_steps, 
     optimizer2 = tf.contrib.tpu.CrossShardOptimizer(optimizer2)
 
   tvars = tf.trainable_variables()
-  vars1=[v for v in tvars if "pooler" in v.name or "linear_r" in v.name or "linear_g" in v.name or "output_weights" in v.name or "output_bias" in v.name]
-  vars2 = [v for v in tvars if "pooler" not in v.name and "linear_r" not in v.name and "linear_g" not in v.name and "output_weights" not in v.name and "output_bias" not in v.name]
+  vars1=[]
+  vars2=[]
+  for v in tvars:
+      if "linear_r" in v.name or "linear_g" in v.name or "output_weights" in v.name or "output_bias" in v.name:
+          vars1.append(v)
+      else:
+          vars2.append(v)
   grads = tf.gradients(loss, vars1+vars2)
 
   # This is how the model was pre-trained.

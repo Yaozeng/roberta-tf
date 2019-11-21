@@ -134,6 +134,6 @@ with  tf.Session(graph=graph) as sess:
             print(correct)
             print(all_count)
             print(correct / all_count)
-    with open("./results/results_roberta_align.json", "w", encoding="utf8") as fout:
+    with open("./results_roberta_align.json", "w", encoding="utf8") as fout:
         for result in results:
             fout.write(json.dumps(result, ensure_ascii=False) + "\n")
