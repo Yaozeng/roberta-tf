@@ -21,10 +21,10 @@ from __future__ import print_function
 import collections
 import csv
 import os
-import modeling2
-import optimization2
+import modeling_align
+import optimization_align
 import tokenization
-import tokenization2
+import tokenization_roberta
 import tensorflow as tf
 
 flags = tf.flags
@@ -567,7 +567,7 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
 
 def create_model(bert_config, is_training, input_ids, input_mask,align_mask,labels, num_labels, use_one_hot_embeddings):
   """Creates a classification model."""
-  model = modeling2.BertModel(
+  model = modeling_align.BertModel(
       config=bert_config,
       is_training=is_training,
       input_ids=input_ids,
@@ -645,7 +645,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,lea
     scaffold_fn = None
     if init_checkpoint:
       (assignment_map, initialized_variable_names
-      ) = modeling2.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      ) = modeling_align.get_assignment_map_from_checkpoint(tvars, init_checkpoint)
       if use_tpu:
 
         def tpu_scaffold():
@@ -667,7 +667,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,lea
     output_spec = None
     if mode == tf.estimator.ModeKeys.TRAIN:
 
-      train_op= optimization2.create_optimizer(
+      train_op= optimization_align.create_optimizer(
           total_loss, learning_rate,learning_rate2, num_train_steps, num_warmup_steps, use_tpu)
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
@@ -802,7 +802,7 @@ def main(_):
     raise ValueError(
         "At least one of `do_train`, `do_eval` or `do_predict' must be True.")
 
-  bert_config = modeling2.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = modeling_align.BertConfig.from_json_file(FLAGS.bert_config_file)
 
   if FLAGS.max_seq_length > bert_config.max_position_embeddings:
     raise ValueError(
@@ -821,7 +821,7 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"./pretrained")
+  tokenizer = tokenization_roberta.RobertaTokenizer.from_pretrained(r"./pretrained")
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:

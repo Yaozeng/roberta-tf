@@ -24,7 +24,7 @@ import os
 import modeling
 import optimization
 import tokenization
-import tokenization2
+import tokenization_roberta
 import tensorflow as tf
 
 flags = tf.flags
@@ -800,7 +800,7 @@ def main(_):
 
   label_list = processor.get_labels()
 
-  tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"./pretrained")
+  tokenizer = tokenization_roberta.RobertaTokenizer.from_pretrained(r"./pretrained")
 
   tpu_cluster_resolver = None
   if FLAGS.use_tpu and FLAGS.tpu_name:

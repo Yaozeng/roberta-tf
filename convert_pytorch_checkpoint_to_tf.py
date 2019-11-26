@@ -22,8 +22,6 @@ import torch
 import numpy as np
 import tensorflow as tf
 tf.enable_eager_execution()
-#from pytorch_transformers.modeling_bert import BertModel
-from modeling import create_initializer
 from modeling_roberta import RobertaModel as BertModel
 from configuration_roberta import RobertaConfig
 

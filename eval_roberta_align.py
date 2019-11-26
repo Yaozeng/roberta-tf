@@ -3,8 +3,8 @@ import tensorflow as tf
 import xlrd
 import json
 import numpy as np
-import modeling2
-import tokenization2
+import modeling_align
+import tokenization_roberta
 
 all_count=0
 correct=0
@@ -12,8 +12,8 @@ results=[]
 
 paths=["./data/data1.xlsx","./data/data2.xlsx"]
 
-bert_config = modeling2.BertConfig.from_json_file("./pretrained/config_tf.json")
-tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"./pretrained")
+bert_config = modeling_align.BertConfig.from_json_file("./pretrained/config_tf.json")
+tokenizer = tokenization_roberta.RobertaTokenizer.from_pretrained(r"./pretrained")
 
 graph=tf.Graph()
 with graph.as_default():
@@ -21,7 +21,7 @@ with graph.as_default():
     input_ids_placehold=tf.placeholder(shape=[None,64],dtype=tf.int32)
     input_mask_placehold=tf.placeholder(shape=[None,64],dtype=tf.int32)
     align_mask_placehold = tf.placeholder(shape=[None,64,64], dtype=tf.int32)
-    model = modeling2.BertModel(
+    model = modeling_align.BertModel(
         config=bert_config,
         is_training=False,
         input_ids=input_ids_placehold,

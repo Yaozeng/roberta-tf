@@ -4,7 +4,7 @@ import xlrd
 import json
 import numpy as np
 import modeling
-import tokenization2
+import tokenization_roberta
 
 all_count=0
 correct=0
@@ -13,7 +13,7 @@ results=[]
 paths=["./data/data1.xlsx","./data/data2.xlsx"]
 
 bert_config = modeling.BertConfig.from_json_file("./pretrained/config_tf.json")
-tokenizer = tokenization2.RobertaTokenizer.from_pretrained(r"./pretrained")
+tokenizer = tokenization_roberta.RobertaTokenizer.from_pretrained(r"./pretrained")
 
 graph=tf.Graph()
 with graph.as_default():
