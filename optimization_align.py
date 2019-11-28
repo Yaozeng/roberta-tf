@@ -69,14 +69,14 @@ def create_optimizer(loss, init_lr,init_lr2, num_train_steps, num_warmup_steps, 
   # loaded from init_checkpoint.)
   optimizer1 = AdamWeightDecayOptimizer(
       learning_rate=learning_rate1,
-      weight_decay_rate=0.1,
+      weight_decay_rate=0.01,
       beta_1=0.9,
       beta_2=0.999,
       epsilon=1e-6,
       exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
   optimizer2 = AdamWeightDecayOptimizer(
       learning_rate=learning_rate2,
-      weight_decay_rate=0.1,
+      weight_decay_rate=0.01,
       beta_1=0.9,
       beta_2=0.999,
       epsilon=1e-6,

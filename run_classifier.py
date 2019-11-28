@@ -45,7 +45,7 @@ flags.DEFINE_string(
 flags.DEFINE_string("task_name", "mytask", "The name of the task to train.")
 
 flags.DEFINE_string(
-    "output_dir", "output/roberta",
+    "output_dir", "output/roberta_weight",
     "The output directory where the model checkpoints will be written.")
 
 ## Other parameters
@@ -75,9 +75,9 @@ flags.DEFINE_bool(
 
 flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
 
-flags.DEFINE_integer("eval_batch_size", 24, "Total batch size for eval.")
+flags.DEFINE_integer("eval_batch_size", 64, "Total batch size for eval.")
 
-flags.DEFINE_integer("predict_batch_size", 24, "Total batch size for predict.")
+flags.DEFINE_integer("predict_batch_size", 64, "Total batch size for predict.")
 
 flags.DEFINE_float("learning_rate", 1e-5, "The initial learning rate for Adam.")
 
@@ -375,9 +375,18 @@ class MyProcessor(DataProcessor):
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train_merge.tsv")), "train")
-
+    import pandas as pd
+    df=pd.read_csv(os.path.join(data_dir, "train_merge.tsv"),sep='\t',header=None)
+    df=df.sample(frac=1)
+    examples = []
+    for i in range(0, len(df)):
+        guid="%s-%s" % ("train", i)
+        text_a = tokenization.convert_to_unicode(df.iloc[i][0])
+        text_b = tokenization.convert_to_unicode(df.iloc[i][1])
+        label = tokenization.convert_to_unicode(df.iloc[i][2].astype(str))
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
   def get_dev_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
@@ -525,7 +534,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
     d = tf.data.TFRecordDataset(input_file)
     if is_training:
       d = d.repeat()
-      d = d.shuffle(buffer_size=1000)
+      d = d.shuffle(buffer_size=100)
 
     d = d.apply(
         tf.contrib.data.map_and_batch(
@@ -812,8 +821,8 @@ def main(_):
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
-      log_step_count_steps=25,
-      save_summary_steps=25,
+      log_step_count_steps=1,
+      save_summary_steps=1,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,

@@ -378,8 +378,18 @@ class MyProcessor(DataProcessor):
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train_merge.tsv")), "train")
+    import pandas as pd
+    df=pd.read_csv(os.path.join(data_dir, "train_merge.tsv"),sep='\t',header=None)
+    df=df.sample(frac=1)
+    examples = []
+    for i in range(0, len(df)):
+        guid="%s-%s" % ("train", i)
+        text_a = tokenization.convert_to_unicode(df.iloc[i][0])
+        text_b = tokenization.convert_to_unicode(df.iloc[i][1])
+        label = tokenization.convert_to_unicode(df.iloc[i][2].astype(str))
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
