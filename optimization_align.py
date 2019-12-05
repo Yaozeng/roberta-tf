@@ -90,7 +90,7 @@ def create_optimizer(loss, init_lr,init_lr2, num_train_steps, num_warmup_steps, 
   vars1=[]
   vars2=[]
   for v in tvars:
-      if "linear_r" in v.name or "linear_g" in v.name or "output_weights" in v.name or "output_bias" in v.name:
+      if "linear_r" in v.name or "linear_g" in v.name or "output_weights" in v.name or "output_bias" in v.name or "pooler" in v.name:
           vars1.append(v)
       else:
           vars2.append(v)

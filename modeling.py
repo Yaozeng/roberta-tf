@@ -332,7 +332,7 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
   assignment_map = collections.OrderedDict()
   for x in init_vars:
     (name, var) = (x[0], x[1])
-    if name not in name_to_variable:
+    if name not in name_to_variable or "pooler" in name:
       continue
     assignment_map[name] = name
     initialized_variable_names[name] = 1
